@@ -74,6 +74,10 @@ class TextReader(object):
             words.append(self.int_to_word(index))
         return ''.join(words)
 
+    def save_to_file(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self.vocab, f)
+
 
 def pick_top_n(preds, vocab_size, top_n=5):
     p = np.squeeze(preds)
