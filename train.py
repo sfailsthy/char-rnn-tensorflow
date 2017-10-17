@@ -19,104 +19,94 @@ tf.flags.DEFINE_float('train_keep_prob', 0.5,
                       'dropout rate during training process')
 tf.flags.DEFINE_string('input_file', None, 'utf-8 encoded input file')
 tf.flags.DEFINE_integer('max_steps', 100000, 'max steps of training')
-tf.flags.DEFINE_integer('save_model_every', 1000,
+tf.flags.DEFINE_integer('save_model_every', 50,
                         'save the model every 1000 steps')
 tf.flags.DEFINE_integer('log_every', 10, 'log the summaries every 10 steps')
 tf.flags.DEFINE_integer('max_vocab', 3500, 'the maximum of char number')
 
 
 def main(_):
+    # name_path = os.path.join(os.path.curdir(), FLAGS.name)
+    if not os.path.exists(FLAGS.name):
+        os.makedirs(FLAGS.name)
+
     model_path = os.path.join(FLAGS.name, 'model')
     logdir_path = os.path.join(FLAGS.name, 'logdir')
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
     with codecs.open(FLAGS.input_file, encoding='utf-8') as f:
         text = f.read()
     Reader = TextReader(text, FLAGS.max_vocab)
-    Reader.save_to_file(os.path.join(model_path, 'converter.pkl'))
+    Reader.save_to_file(os.path.join(FLAGS.name, 'converter.pkl'))
 
     arr = Reader.text_to_arr(text)
     g = batch_generator(arr, FLAGS.num_seqs, FLAGS.num_steps)
 
-    with tf.Session() as sess:
-        char_rnn = CharRNN(
-            num_classes=Reader.vocab_size,
-            num_seqs=FLAGS.num_seqs,
-            num_steps=FLAGS.num_steps,
-            lstm_size=FLAGS.lstm_size,
-            num_layers=FLAGS.num_layers,
-            learning_rate=FLAGS.learning_rate,
-            train_keep_prob=FLAGS.train_keep_prob,
-            use_embedding=FLAGS.use_embedding,
-            embedding_size=FLAGS.embedding_size)
+    with tf.Graph().as_default():
+        sess = tf.Session()
+        with sess.as_default():
+            char_rnn = CharRNN(
+                num_classes=Reader.vocab_size,
+                num_seqs=FLAGS.num_seqs,
+                num_steps=FLAGS.num_steps,
+                lstm_size=FLAGS.lstm_size,
+                num_layers=FLAGS.num_layers,
+                learning_rate=FLAGS.learning_rate,
+                train_keep_prob=FLAGS.train_keep_prob,
+                use_embedding=FLAGS.use_embedding,
+                embedding_size=FLAGS.embedding_size)
 
-        # define training procedure
-        global_step = tf.Variable(0, trainable=False, name='global_step')
-        optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
-        # 使用clipping gradients
-        tvars = tf.trainable_variables()
-        grads, _ = tf.clip_by_global_norm(
-            tf.gradients(ys=char_rnn.loss, xs=tvars),
-            clip_norm=char_rnn.grad_clip)
-        train_op = optimizer.apply_gradients(
-            grads_and_vars=zip(grads, tvars), global_step=global_step)
-        '''
-        # Keep track of gradient values and sparsity (optional)
-        print(sess.run(grads_and_vars))
-        grad_summaries = []
-        for g, v in grads_and_vars:
-            if g is not None:
-                grad_hist_summary = tf.summary.histogram(
-                    '{}/grad/hist'.format(v.name), g)
-                sparsity_summary = tf.summary.scalar(
-                    '{}/grad/sparsity'.format(v.name), tf.nn.zero_fraction(g))
-                grad_summaries.append(grad_hist_summary)
-                grad_summaries.append(sparsity_summary)
-        grad_summaries_merged = tf.summary.merge(grad_summaries)
-        loss_summary = tf.summary.scalar('loss', char_rnn.loss)
+            # define training procedure
+            global_step = tf.Variable(0, trainable=False, name='global_step')
+            optimizer = tf.train.AdamOptimizer(
+                learning_rate=FLAGS.learning_rate)
+            # 使用clipping gradients
+            tvars = tf.trainable_variables()
+            grads, _ = tf.clip_by_global_norm(
+                tf.gradients(ys=char_rnn.loss, xs=tvars),
+                clip_norm=char_rnn.grad_clip)
+            train_op = optimizer.apply_gradients(
+                grads_and_vars=zip(grads, tvars), global_step=global_step)
 
-        # Train Summaries
-        train_summary_op = tf.summary.merge(
-            [loss_summary, grad_summaries_merged])
-        train_summary_writer = tf.summary.FileWriter(logdir_path, sess.graph)
-        saver = tf.train.Saver(
-            tf.global_variables(), max_to_keep=FLAGS.log_every)
-        '''
-        saver = tf.train.Saver()
-        sess.run(tf.global_variables_initializer())
-        new_state = sess.run(char_rnn.initial_state)
+            saver = tf.train.Saver()
+            sess.run(tf.global_variables_initializer())
+            if os.path.exists(model_path):
+                saver.restore(sess, tf.train.latest_checkpoint(model_path))
+                print('model restored!')
+            else:
+                os.makedirs(model_path)
 
-        for x, y in g:
-            start = time.time()
-            feed_dict = {
-                char_rnn.inputs: x,
-                char_rnn.targets: y,
-                char_rnn.keep_prob: FLAGS.train_keep_prob,
-                char_rnn.initial_state: new_state
-            }
-            '''
-            _, step, new_state, summaries, loss = sess.run([
-                train_op, global_step, char_rnn.final_state, train_summary_op,
-                char_rnn.loss
-            ], feed_dict)
-            '''
-            _, step, new_state, loss = sess.run(
-                [train_op, global_step, char_rnn.final_state,
-                 char_rnn.loss], feed_dict)
-            # train_summary_writer.add_summary(summaries, step)
-            end = time.time()
-            current_step = tf.train.global_step(sess, global_step)
-            if step % FLAGS.log_every == 0:
-                print('step: {}/{}... '.format(step, FLAGS.max_steps),
-                      'loss: {:.4f}... '.format(loss),
-                      '{:.4f} sec/batch'.format((end - start)))
-            if current_step % FLAGS.save_model_every == 0:
-                saver.save(
-                    sess,
-                    os.path.join(model_path, 'model'),
-                    global_step=current_step)
-            if current_step >= FLAGS.max_steps:
-                break
+            new_state = sess.run(char_rnn.initial_state)
+
+            for x, y in g:
+                start = time.time()
+                feed_dict = {
+                    char_rnn.inputs: x,
+                    char_rnn.targets: y,
+                    char_rnn.keep_prob: FLAGS.train_keep_prob,
+                    char_rnn.initial_state: new_state
+                }
+                '''
+                 _, step, new_state, summaries, loss = sess.run([
+                    train_op, global_step, char_rnn.final_state, train_summary_op,
+                    char_rnn.loss
+                ], feed_dict)
+                '''
+                _, step, new_state, loss = sess.run([
+                    train_op, global_step, char_rnn.final_state, char_rnn.loss
+                ], feed_dict)
+                # train_summary_writer.add_summary(summaries, step)
+                end = time.time()
+                current_step = tf.train.global_step(sess, global_step)
+                if step % FLAGS.log_every == 0:
+                    print('step: {}/{}... '.format(step, FLAGS.max_steps),
+                          'loss: {:.4f}... '.format(loss),
+                          '{:.4f} sec/batch'.format((end - start)))
+                if current_step % FLAGS.save_model_every == 0:
+                    saver.save(
+                        sess,
+                        os.path.join(model_path, 'model.ckpt'),
+                        global_step=current_step)
+                if current_step >= FLAGS.max_steps:
+                    break
 
 
 if __name__ == '__main__':
