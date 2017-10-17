@@ -28,10 +28,12 @@ tf.flags.DEFINE_integer('max_vocab', 3500, 'the maximum of char number')
 def main(_):
     model_path = os.path.join(FLAGS.name, 'model')
     logdir_path = os.path.join(FLAGS.name, 'logdir')
-
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
     with codecs.open(FLAGS.input_file, encoding='utf-8') as f:
         text = f.read()
     Reader = TextReader(text, FLAGS.max_vocab)
+    Reader.save_to_file(os.path.join(model_path, 'converter.pkl'))
 
     arr = Reader.text_to_arr(text)
     g = batch_generator(arr, FLAGS.num_seqs, FLAGS.num_steps)
@@ -82,10 +84,6 @@ def main(_):
         '''
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
-        if os.path.exists(model_path):
-            sess = saver.restore(sess, model_path)
-        else:
-            os.makedirs(model_path)
         new_state = sess.run(char_rnn.initial_state)
 
         for x, y in g:
