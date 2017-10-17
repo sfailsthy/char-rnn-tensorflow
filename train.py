@@ -19,14 +19,13 @@ tf.flags.DEFINE_float('train_keep_prob', 0.5,
                       'dropout rate during training process')
 tf.flags.DEFINE_string('input_file', None, 'utf-8 encoded input file')
 tf.flags.DEFINE_integer('max_steps', 100000, 'max steps of training')
-tf.flags.DEFINE_integer('save_model_every', 50,
+tf.flags.DEFINE_integer('save_model_every', 200,
                         'save the model every 1000 steps')
 tf.flags.DEFINE_integer('log_every', 10, 'log the summaries every 10 steps')
 tf.flags.DEFINE_integer('max_vocab', 3500, 'the maximum of char number')
 
 
 def main(_):
-    # name_path = os.path.join(os.path.curdir(), FLAGS.name)
     if not os.path.exists(FLAGS.name):
         os.makedirs(FLAGS.name)
 
@@ -84,16 +83,11 @@ def main(_):
                     char_rnn.keep_prob: FLAGS.train_keep_prob,
                     char_rnn.initial_state: new_state
                 }
-                '''
-                 _, step, new_state, summaries, loss = sess.run([
-                    train_op, global_step, char_rnn.final_state, train_summary_op,
-                    char_rnn.loss
-                ], feed_dict)
-                '''
+
                 _, step, new_state, loss = sess.run([
                     train_op, global_step, char_rnn.final_state, char_rnn.loss
                 ], feed_dict)
-                # train_summary_writer.add_summary(summaries, step)
+
                 end = time.time()
                 current_step = tf.train.global_step(sess, global_step)
                 if step % FLAGS.log_every == 0:
