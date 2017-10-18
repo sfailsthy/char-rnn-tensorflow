@@ -28,7 +28,7 @@ python train.py --use_embedding --input_file data/poetry.txt --name poetry --lea
 To sample
 
 ```
-python sample.py --use_embedding --converter_path poetry/converter.pkl --checkpoint_path model/poetry/ --max_length 300
+python sample.py --use_embedding --converter_path poetry/converter.pkl --checkpoint_path poetry/model/ --max_length 300
 ```
 
 
@@ -43,7 +43,7 @@ python train.py --use_embedding True --input_file data/novel.txt --num_steps 80 
 To sample
 
 ```
-python sample.py --converter_path novel/converter.pkl --checkpoint_path  model/novel --use_embedding --max_length 2000 --num_layers 3 --lstm_size 256 --embedding_size 256
+python sample.py --converter_path novel/converter.pkl --checkpoint_path  novel/model/ --use_embedding --max_length 2000 --num_layers 3 --lstm_size 256 --embedding_size 256
 ```
 
 
@@ -59,7 +59,7 @@ python train.py --input_file data/jay.txt --num_steps 20 --batch_size 32 --name 
 To sample
 
 ```
-python sample.py --converter_path jay/converter.pkl --checkpoint_path  model/jay --max_length 500 --use_embedding --num_layers 3 --start_string 我知道
+python sample.py --converter_path jay/converter.pkl --checkpoint_path  jay/model/ --max_length 500 --use_embedding --num_layers 3 --start_string 我知道
 ```
 
 
@@ -75,7 +75,7 @@ python train.py --input_file data/linux.txt --num_steps 100 --name linux --learn
 To sample
 
 ```
-python sample.py --converter_path linux/converter.pkl --checkpoint_path  model/linux --max_length 1000
+python sample.py --converter_path linux/converter.pkl --checkpoint_path  linux/model/ --max_length 1000
 ```
 
 ## Generate Japanese Text
@@ -89,7 +89,7 @@ python train.py --input_file data/jpn.txt --num_steps 20 --batch_size 32 --name 
 To sample
 
 ```
-python sample.py --converter_path jpn/converter.pkl --checkpoint_path model/jpn --max_length 1000 --use_embedding
+python sample.py --converter_path jpn/converter.pkl --checkpoint_path jpn/model/--max_length 1000 --use_embedding
 ```
 
 
